@@ -12,19 +12,6 @@ jobs:
       PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
       PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
 
-    services:
-      provider:
-        image: node:18
-        ports:
-          - 3001:3001
-        options: >-
-          --health-cmd "curl --fail http://localhost:3001/users || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        volumes:
-          - .:/app
-        entrypoint: sh -c "cd /app/provider && npm install && node server.js"
 
     steps:
       - name: Checkout code
@@ -57,6 +44,13 @@ jobs:
         run: |
           cd provider
           npm install
+
+      - name: Start provider service
+        run: |
+          cd provider
+          npm start &
+          sleep 5
+          curl --retry 5 --retry-delay 2 http://localhost:3001/users
 
       - name: Verify provider with Pact contract
         run: |
