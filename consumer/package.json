@@ -1,0 +1,12 @@
+{
+  "name": "consumer",
+  "scripts": {
+    "test": "jest"
+  },
+  "dependencies": {
+    "@pact-foundation/pact": "^11.1.0"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  }
+}
