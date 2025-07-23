@@ -1,0 +1,64 @@
+name: Pact Contract Testing
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    env:
+      PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+      PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+
+    services:
+      provider:
+        image: node:18
+        ports:
+          - 3001:3001
+        options: >-
+          --health-cmd "curl --fail http://localhost:3001/users || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        volumes:
+          - .:/app
+        entrypoint: sh -c "cd /app/provider && npm install && node server.js"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install consumer dependencies
+        run: |
+          cd consumer
+          npm install
+
+      - name: Run consumer tests (generate pact)
+        run: |
+          cd consumer
+          npm test
+
+      - name: Publish contract to PactFlow
+        run: |
+          npx pact-broker publish pacts \
+            --consumer-app-version 1.0.${{ github.run_number }} \
+            --tag ci \
+            --broker-base-url=$PACT_BROKER_BASE_URL \
+            --broker-token=$PACT_BROKER_TOKEN
+
+      - name: Install provider dependencies
+        run: |
+          cd provider
+          npm install
+
+      - name: Verify provider with Pact contract
+        run: |
+          cd provider
+          npm test
